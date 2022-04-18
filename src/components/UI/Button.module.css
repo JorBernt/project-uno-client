@@ -1,0 +1,23 @@
+button {
+    border-radius: 5px;
+    box-shadow: 0 0 6px rgba(0,0,0,0.4);
+    max-width: 10rem;
+    width: 10rem;
+    margin: 1rem auto auto auto;
+    height: 3rem;
+}
+
+.creategame {
+    background-color: #4df9ab;
+}
+
+.joingame {
+    background-color: chocolate;
+}
+
+.startgame {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: red;
+}

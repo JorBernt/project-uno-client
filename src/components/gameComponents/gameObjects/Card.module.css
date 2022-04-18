@@ -1,0 +1,14 @@
+.card{
+    width: 4rem;
+    height: 6rem;
+    border-radius: 5px;
+    box-shadow: 0 0 6px;
+    position: absolute;
+    top: 500px;
+    left: 500px;
+    background-color: red;
+    font-size: 50px;
+}
+.playable {
+    cursor:pointer;
+}

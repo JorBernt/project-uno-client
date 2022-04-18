@@ -1,0 +1,19 @@
+.playmenu {
+    background-color: #c5d7f9;
+    padding: 1rem;
+    margin: 15rem auto;
+    width: 25rem;
+    height: 20rem;
+    max-width: 95%;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+
+}
+
+.buttons {
+    margin-top: 5rem;
+    display: flex;
+    flex-direction: column;
+}
+
