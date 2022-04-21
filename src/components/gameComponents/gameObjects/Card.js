@@ -4,23 +4,28 @@ import classes from "./Card.module.css";
 
 
 const Card = (props) => {
-    console.log("move", props.move)
-    const playerNumber = props.playerNumber;
-    const [x, setX] = useState(300)
-    const [y, setY] = useState(500)
-    const [m, setM] = useState(props.move);
+    const [x, setX] = useState(props.x + (props.cardNumber * 50))
+    const [y, setY] = useState(props.y)
+    const [m, setM] = useState(false);
 
+    useEffect(() => {
+        setX(props.x + (props.cardNumber * 50));
+    }, [props.cardNumber])
 
-
-    if(props.move !== undefined && playerNumber.toString() === props.move.playerId.toString()) {
+    /*if(!m && props.move !== undefined && playerNumber.toString() === props.move.playerId.toString()) {
         console.log("moved")
         setX(700)
         setY(400)
-        setM(true)
-    }
+        setM(true);
+    }*/
 
     return (
-        <div className={classes.card}  style={{top: y, left: x}}></div>
+        <div className={classes.card} style={{
+            top: y + "px",
+            left: x + "px",
+            backgroundColor: props.data.color,
+            color: props.data.color === "BLACK" ? "WHITE" : "BLACK",
+        }}>{props.data.value}</div>
     );
 };
 

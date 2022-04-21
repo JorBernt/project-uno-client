@@ -5,7 +5,6 @@ import classes from "./PlayMenu.module.css"
 
 const PlayMenu = () => {
     const navigate = useNavigate();
-    const usernameRef = useRef(null);
     const roomIdRef = useRef(null);
     let sessionId = localStorage.getItem("sessionId");
 
@@ -21,15 +20,32 @@ const PlayMenu = () => {
         localStorage.setItem("sessionId", sessionId);
     }
 
-    const createGameHandler = () => {
-        localStorage.setItem("username", usernameRef.current.value);
-        setSessionId();
+    const connect = roomId => {
+        fetch(`http://localhost:8080/checkValidRoomId/?roomId=${roomId}`)
+            .then(response => response.json())
+            .then(
+                (response) => {
+                    if (response.success) {
+                        navigate(`/game/room/${roomId}`, {replace: false});
+                    }
+                    else
+                        console.log("fant ikke rom", roomId)
+                },
+                (error) => {
+                    console.log("error")
+                    console.log(error)
+                }
+            )
+    }
 
-        fetch(`http://localhost:8080/createNewGame/?username=${usernameRef.current.value}&sessionId=${sessionId}`)
-            .then(respons => respons.json())
+    const createGameHandler = () => {
+        localStorage.clear();
+        setSessionId();
+        fetch(`http://localhost:8080/createNewGame/?sessionId=${sessionId}`)
+            .then(response => response.json())
             .then(
                 (roomId) => {
-                    navigate(`/game/room/${roomId.id}`, {replace: false});
+                    connect(roomId.id);
                 },
                 (error) => {
 
@@ -37,28 +53,11 @@ const PlayMenu = () => {
             )
     }
 
-    const connect = () => {
-        console.log("Joining with id", sessionId)
-        fetch(`http://localhost:8080/joinGame/?username=${usernameRef.current.value}&roomId=${roomIdRef.current.value}&sessionId=${sessionId}`)
-            .then(respons => respons.json())
-            .then(
-                (response) => {
-                    if (response.success) {
-
-                        navigate(`/game/room/${roomIdRef.current.value}`, {replace: false});
-                    }
-                },
-                (error) => {
-                    console.log(error)
-                }
-            );
-    }
-
     const joinGameHandler = () => {
-        localStorage.setItem("username", usernameRef.current.value);
+        localStorage.clear();
         if (sessionId != null) {
             fetch(`http://localhost:8080/checkValidSessionId/?roomId=${roomIdRef.current.value}&sessionId=${sessionId}`)
-                .then(respons => respons.json())
+                .then(response => response.json())
                 .then(
                     (response) => {
                         if (!response.success) {
@@ -71,19 +70,18 @@ const PlayMenu = () => {
                     (error) => {
                         console.log(error)
                     }
-                ).then(() => connect());
+                ).then(() => connect(roomIdRef.current.value));
         } else {
             setSessionId();
-            connect();
+            connect(roomIdRef.current.value);
         }
 
     }
+
     return (
         <div className={classes.playmenu}>
             <h2>UNO!</h2>
             <div className={classes.buttons}>
-                <label htmlFor="username">Username:</label>
-                <input id="username" ref={usernameRef}/>
                 <label htmlFor="roomid">Room ID:</label>
                 <input id="roomid" ref={roomIdRef}/>
                 <Button className={"creategame"} onClick={createGameHandler}>Create game</Button>

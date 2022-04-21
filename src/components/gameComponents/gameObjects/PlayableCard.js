@@ -1,12 +1,16 @@
-import React, { useState } from "react";
+import React, {useEffect, useState} from "react";
 
 import classes from "./Card.module.css";
 
 
 const PlayableCard = (props) => {
     const playerId = localStorage.getItem("playerId");
-    const [x, setX] = useState(900)
-    const [y, setY] = useState(750)
+    const [x, setX] = useState(700 + props.cardNumber * 50)
+    const [y, setY] = useState(900)
+
+    useEffect(() => {
+        setX(700 + props.cardNumber * 50);
+    }, [props.cardNumber])
 
     let offsetX, offsetY
     const move = e => {
@@ -15,6 +19,8 @@ const PlayableCard = (props) => {
         el.style.top = `${e.pageY - offsetY}px`
     }
     const cardMouseDownHandler = event => {
+        console.log(props.playerTurn, playerId)
+        if (props.playerTurn !== +playerId) return;
         const el = event.target
         offsetX = event.clientX - el.getBoundingClientRect().left
         offsetY = event.clientY - el.getBoundingClientRect().top
@@ -24,20 +30,20 @@ const PlayableCard = (props) => {
         const el = event.target
         el.removeEventListener('mousemove', move)
         offsetY = Math.abs(event.clientY - y);
-        if(offsetY > 200) {
-            console.log("Card played")
-            props.onPlayed({playerId: playerId, card: "g4"});
-            el.style.left = `${700}px`
-            el.style.top = `${500}px`;
-        }
-        else {
-            el.style.left = `${x}px`
-            el.style.top = `${y}px`;
-        }
+        if (offsetY > 200)
+            props.onPlayed({playerId: playerId, card: props.card})
+        el.style.left = `${x}px`
+        el.style.top = `${y}px`;
     }
     return (
-        <div className={`${classes.card} ${classes.playable}`} onMouseDown={cardMouseDownHandler} onMouseUp={cardMouseUpHandler}>
-            5
+        <div className={`${classes.card} ${classes.playable}`} style={{
+            backgroundColor: props.card.color,
+            color: props.card.color === "BLACK" ? "WHITE" : "BLACK",
+            left: x,
+            top: y
+        }}
+             onMouseDown={cardMouseDownHandler} onMouseUp={cardMouseUpHandler}>
+            {props.card.value}
         </div>
     );
 };

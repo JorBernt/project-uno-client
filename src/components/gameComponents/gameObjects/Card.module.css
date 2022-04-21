@@ -4,10 +4,9 @@
     border-radius: 5px;
     box-shadow: 0 0 6px;
     position: absolute;
-    top: 500px;
-    left: 500px;
     background-color: red;
     font-size: 50px;
+    user-select: none;
 }
 .playable {
     cursor:pointer;
