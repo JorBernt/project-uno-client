@@ -27,6 +27,7 @@ const GamePage = (props) => {
     const [playerTurn, setPlayerTurn] = useState(1);
     const [gameState, setGameState] = useState(NOT_STARTED);
     const [gameOwner, setGameOwner] = useState("");
+    const [wildChosenColor, setWildChosenColor] = useState("NONE");
 
     const usernameRef = useRef("");
 
@@ -50,6 +51,7 @@ const GamePage = (props) => {
                 setPlayerTurn(json.playerTurn);
                 setGameStarted(json.gameStarted)
                 setGameState(json.state);
+                setWildChosenColor(json.wildChosenColor);
                 if(gameOwner === "")
                     setGameOwner(json.ownerUsername)
                 break;
@@ -151,6 +153,9 @@ const GamePage = (props) => {
                 {gameReady && !gameStarted && playerId === 1 &&
                     <Button className={"startgame"} onClick={startGameHandler}>Start game</Button>
                 }
+                {gameReady && !gameStarted && playerId !== 1 &&
+                    <h1>Waiting for host to start game</h1>
+                }
                 {gameReady && <GameCanvas
                     onSendGameState={sendData}
                     numberOfPlayers={numberOfPlayers}
@@ -158,6 +163,7 @@ const GamePage = (props) => {
                     hand={hand}
                     callBack={callBack}
                     playerTurn={playerTurn}
+                    wildChosenColor={wildChosenColor}
                 />}
             </div>
             <div>

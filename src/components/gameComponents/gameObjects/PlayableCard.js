@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from "react";
 
 import classes from "./Card.module.css";
+import colorPicker from "../canvas/ColorPicker";
 
 
 const PlayableCard = (props) => {
@@ -30,10 +31,39 @@ const PlayableCard = (props) => {
         const el = event.target
         el.removeEventListener('mousemove', move)
         offsetY = Math.abs(event.clientY - y);
-        if (offsetY > 200)
-            props.onPlayed({playerId: playerId, card: props.card})
-        el.style.left = `${x}px`
-        el.style.top = `${y}px`;
+        let colorPicker = false;
+        if (offsetY > 200) {
+            if (props.card.type === "DRAW4" || props.card.type === "WILD") {
+                props.showColorPicker({show:true, element:el, card:props.card});
+                colorPicker = true;
+            } else {
+                playCard(null, "NONE");
+            }
+        }
+        if (!colorPicker) {
+            el.style.left = `${x}px`
+            el.style.top = `${y}px`;
+        }
+    }
+
+    useEffect(() => {
+        if(props.chosenColor === null || props.card.id !== props.chosenColor.selected.card.id) return;
+        console.log(props.chosenColor)
+        const chosenColor = props.chosenColor.color.color;
+        if (chosenColor === "CANCEL") {
+            props.chosenColor.selected.element.style.left = `${x}px`
+            props.chosenColor.selected.element.style.top = `${y}px`
+        } else if (chosenColor !== "NONE") {
+            playCard(props.chosenColor.selected.card, chosenColor);
+        }
+    }, [props.chosenColor])
+
+    const playCard = (card, chosenColor) => {
+        props.onPlayed({
+            playerId: playerId,
+            card: card === null ? props.card : card,
+            chosenColor: chosenColor
+        })
     }
     return (
         <div className={`${classes.card} ${classes.playable}`} style={{

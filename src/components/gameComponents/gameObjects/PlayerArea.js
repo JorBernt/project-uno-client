@@ -8,7 +8,7 @@ const PlayerArea = (props) => {
     const [hand, setHand] = useState([]);
 
     const cardPlayedHandler = move => {
-        return props.onSendGameState({playerId: move.playerId, card: move.card});
+        props.onSendGameState({playerId: move.playerId, card: move.card, chosenColor:move.chosenColor});
     };
 
     useEffect(() => {
@@ -21,12 +21,19 @@ const PlayerArea = (props) => {
         }
     }, [props.move])
 
+    useEffect(() => {
+        console.log("update hand state")
+        setHand(prevState => [...prevState]);
+    }, [props.chosenColor])
+
     let cardNumber = 1;
     console.log(cardNumber)
 
     return (<div className={classes.area}>
-            {hand.map(card => <PlayableCard key={card.id} onPlayed={cardPlayedHandler} card={card} cardNumber={cardNumber++} playerTurn={props.playerTurn}/>)}
-        </div>)
+        {hand.map(card => <PlayableCard key={card.id} onPlayed={cardPlayedHandler} card={card} cardNumber={cardNumber++}
+                                        playerTurn={props.playerTurn} showColorPicker={props.showColorPicker}
+                                        chosenColor={props.chosenColor}/>)}
+    </div>)
 };
 
 export default PlayerArea;

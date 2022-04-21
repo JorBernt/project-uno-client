@@ -13,7 +13,7 @@ const Button = props => {
     }
 
     return (
-        <button type={props.type | 'button'} className={getClasses(props.className)} onClick={props.onClick}>{props.children}</button>
+        <button value={props.value} style={props.style} type={props.type | 'button'} className={getClasses(props.className)} onClick={props.onClick}>{props.children}</button>
     )
 };
 
