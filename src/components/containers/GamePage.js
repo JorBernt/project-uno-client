@@ -28,7 +28,6 @@ const GamePage = (props) => {
     const [gameState, setGameState] = useState(NOT_STARTED);
     const [gameOwner, setGameOwner] = useState("");
     const [wildChosenColor, setWildChosenColor] = useState("NONE");
-
     const usernameRef = useRef("");
 
     const sendData = (data) => {
@@ -52,16 +51,16 @@ const GamePage = (props) => {
                 setGameStarted(json.gameStarted)
                 setGameState(json.state);
                 setWildChosenColor(json.wildChosenColor);
-                if(gameOwner === "")
+                if (gameOwner === "")
                     setGameOwner(json.ownerUsername)
                 break;
             }
             case "MOVE" : {
-                setMove({playerId: json.playerId, card: json.card, type:json.type, publicResponse:publicResponse});
+                setMove({playerId: json.playerId, card: json.card, type: json.type, publicResponse: publicResponse});
                 break;
             }
             case "DRAW": {
-                setMove({type: json.type, playerId: json.playerId, cards: json.cards, publicResponse:publicResponse});
+                setMove({type: json.type, playerId: json.playerId, cards: json.cards, publicResponse: publicResponse});
             }
         }
     }
@@ -82,7 +81,7 @@ const GamePage = (props) => {
             stompClient.subscribe(`/channel/${params.roomId}/${sessionId}`, response => {
                 handleResponse(response, false);
             });
-            if(addUser) {
+            if (addUser) {
                 stompClient.send(`${topic}/addUser`, {}, JSON.stringify({
                     username: username,
                     roomId: params.roomId,
@@ -92,13 +91,13 @@ const GamePage = (props) => {
         });
     }
 
-    if(stompClient === null) {
+    if (stompClient === null) {
         fetch(`http://localhost:8080/checkValidSessionId/?roomId=${params.roomId}&sessionId=${sessionId}`)
             .then(response => response.json())
             .then(
                 (response) => {
                     if (response.success) {
-                       connectStomp(false);
+                        connectStomp(false);
                     }
                 },
                 (error) => {

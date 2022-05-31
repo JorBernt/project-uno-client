@@ -1,4 +1,4 @@
-import React, {useRef} from "react";
+import React, {useRef, useState} from "react";
 import {useNavigate} from 'react-router-dom';
 import Button from "./UI/Button";
 import classes from "./PlayMenu.module.css"
@@ -6,6 +6,7 @@ import classes from "./PlayMenu.module.css"
 const PlayMenu = () => {
     const navigate = useNavigate();
     const roomIdRef = useRef(null);
+    const [botChecked, setBotChecked] = useState(false);
     let sessionId = localStorage.getItem("sessionId");
 
     const randomString = (length) => {
@@ -27,8 +28,7 @@ const PlayMenu = () => {
                 (response) => {
                     if (response.success) {
                         navigate(`/game/room/${roomId}`, {replace: false});
-                    }
-                    else
+                    } else
                         console.log("fant ikke rom", roomId)
                 },
                 (error) => {
@@ -41,7 +41,7 @@ const PlayMenu = () => {
     const createGameHandler = () => {
         localStorage.clear();
         setSessionId();
-        fetch(`http://localhost:8080/createNewGame/?sessionId=${sessionId}`)
+        fetch(`http://localhost:8080/createNewGame/?sessionId=${sessionId}&bot=${botChecked}`)
             .then(response => response.json())
             .then(
                 (roomId) => {
@@ -75,7 +75,10 @@ const PlayMenu = () => {
             setSessionId();
             connect(roomIdRef.current.value);
         }
+    }
 
+    const botCheckedHandler = event => {
+        setBotChecked(true);
     }
 
     return (
@@ -84,7 +87,12 @@ const PlayMenu = () => {
             <div className={classes.buttons}>
                 <label htmlFor="roomid">Room ID:</label>
                 <input id="roomid" ref={roomIdRef}/>
-                <Button className={"creategame"} onClick={createGameHandler}>Create game</Button>
+                <div>
+                    <Button className={"creategame"} onClick={createGameHandler}>Create game</Button>
+                    <input type={"checkbox"} id="bot" onClick={botCheckedHandler}/>
+                    <label htmlFor="bot">Bot</label>
+                </div>
+
                 <Button className={"joingame"} onClick={joinGameHandler}>Join game</Button>
             </div>
         </div>

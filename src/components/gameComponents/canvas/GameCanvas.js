@@ -48,12 +48,12 @@ const GameCanvas = (props) => {
                         marginLeft: "35%",
                         marginTop: "5%",
                         fontSize: "30px",
-                        color: props.wildChosenColor,
+
                         zIndex: 2,
                         position: "absolute",
                         flexDirection: "row"
                     }}>
-                        {`Chosen color: ${props.wildChosenColor}`}
+                        Chosen color: <span style={{color: props.wildChosenColor,}}>{props.wildChosenColor}</span>
                     </p>
                 }
                 <PlayArea onSendGameState={playerPlayHandler} data={props.move} playerId={playerId}
