@@ -30,11 +30,14 @@ const GamePage = (props) => {
     const [wildChosenColor, setWildChosenColor] = useState("NONE");
     const usernameRef = useRef("");
 
+    const serverResponseCallback = useRef(null)
+
     const sendData = (data) => {
         console.log(data)
         stompClient.send(`${topic}/sendGameData`, {}, JSON.stringify(data));
         return true;
     };
+
 
     const handleResponse = (response, publicResponse) => {
         const json = JSON.parse(response.body);
@@ -51,6 +54,13 @@ const GamePage = (props) => {
                 setGameStarted(json.gameStarted)
                 setGameState(json.state);
                 setWildChosenColor(json.wildChosenColor);
+                for (const player of json.players) {
+                    if (player.playerId === +localStorage.getItem("playerId")) {
+                        setMove({playerId: player.playerId, cards: player.hand, type: "DRAW", publicResponse: false});
+                        break
+                    }
+
+                }
                 if (gameOwner === "")
                     setGameOwner(json.ownerUsername)
                 break;
@@ -60,7 +70,16 @@ const GamePage = (props) => {
                 break;
             }
             case "DRAW": {
-                setMove({type: json.type, playerId: json.playerId, cards: json.cards, publicResponse: publicResponse});
+                serverResponseCallback.current({
+                    type: json.type,
+                    playerId: json.playerId,
+                    cards: json.cards,
+                    publicResponse: publicResponse
+                });
+                break;
+            }
+            case "VALIDATE_PLAY" : {
+                serverResponseCallback.current({type: json.type, valid: json.valid})
             }
         }
     }
@@ -163,6 +182,7 @@ const GamePage = (props) => {
                     callBack={callBack}
                     playerTurn={playerTurn}
                     wildChosenColor={wildChosenColor}
+                    serverResponseCallback={serverResponseCallback}
                 />}
             </div>
             <div>
