@@ -54,19 +54,19 @@ const GamePage = (props) => {
                 setGameStarted(json.gameStarted)
                 setGameState(json.state);
                 setWildChosenColor(json.wildChosenColor);
-                for (const player of json.players) {
+              /*  for (const player of json.players) {
                     if (player.playerId === +localStorage.getItem("playerId")) {
-                        setMove({playerId: player.playerId, cards: player.hand, type: "DRAW", publicResponse: false});
+                        serverResponseCallback.current({playerId: player.playerId, cards: player.hand, type: "DRAW", publicResponse: false});
                         break
                     }
 
-                }
+                }*/
                 if (gameOwner === "")
                     setGameOwner(json.ownerUsername)
                 break;
             }
             case "MOVE" : {
-                setMove({playerId: json.playerId, card: json.card, type: json.type, publicResponse: publicResponse});
+                serverResponseCallback.current({playerId: json.playerId, card: json.card, type: json.type, publicResponse: publicResponse});
                 break;
             }
             case "DRAW": {

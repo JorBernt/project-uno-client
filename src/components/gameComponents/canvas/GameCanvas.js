@@ -1,22 +1,47 @@
 import React, {useEffect, useRef} from "react";
 
+
+class Player {
+    hand = []
+    constructor(id, username) {
+        this.id = id
+        this.username = username
+    }
+}
+
 class Card {
     width = 80
     height = 100
     radius = 4
-    followMouse = false
-    handX = 0
-    handY = 0
-    hover = false
-    played = false
 
-    constructor(x, y, color, value, type, string, id, positionInHand) {
+    constructor(x, y, color, value) {
         this.x = x
         this.y = y
-        this.handX = x
-        this.handY = y
+        this.originalPosX = x
+        this.originalPosY = y
         this.color = color
         this.value = value
+    }
+
+    setX = x => {
+        this.x = x
+        this.originalPosX = x
+    }
+    setY = y => {
+        this.y = y
+        this.originalPosY = y
+    }
+}
+
+class FullCard extends Card {
+
+    followMouse = false
+    hover = false
+    played = false
+    dead = false
+
+    constructor(x, y, color, value, type, string, id, positionInHand) {
+        super(x, y, color, value);
         this.type = type
         this.string = string
         this.id = id
@@ -28,6 +53,24 @@ class Card {
     }
     setHover = val => {
         this.hover = val
+    }
+    setDead = val => {
+        this.dead = val
+    }
+
+    toPlayedCard = () => {
+        return new PlayedCard(playedCardPosition.x, playedCardPosition.y, this.color, this.value, this.type, this.string, this.id)
+    }
+}
+
+class PlayedCard extends Card {
+
+    constructor(x, y, color, value, type, string, id) {
+        super(x, y, color);
+        this.value = value
+        this.type = type
+        this.string = string
+        this.id = id
     }
 }
 
@@ -42,14 +85,18 @@ const playedCardPosition = {
     y: 400
 }
 
-let hand = []
-let playedCard = {}
-let stateLocked = false
 
 const GameCanvas = (props) => {
     const canvasRef = useRef(null)
     const playerId = localStorage.getItem("playerId")
-
+    const sessionId = localStorage.getItem("sessionId")
+    let hand = []
+    let playedCard = null
+    let stateLocked = false
+    const deck = new Card(1000, 300, "gray", "DECK")
+    let wildCard = null
+    let colorPicker = false
+    const players = []
     const resizeCanvasToDisplaySize = canvas => {
 
         const {width, height} = canvas.getBoundingClientRect()
@@ -71,88 +118,132 @@ const GameCanvas = (props) => {
             ctx.width = 2000
             let frameCount = 0
             let animationFrameId;
-            const serverResponseHandler = (response) => {
-                if (response.type === "DRAW") {
-                    if (response.publicResponse) return
-                    console.log("draw", response)
-                    hand = []
-                    let offset = 0
-                    let positionInHand = 0
-                    for (const c of response.cards) {
-                        hand.push(new Card(handPosition.x + offset, handPosition.y, c.color, c.value, c.type, c.string, c.id, positionInHand))
-                        offset += handPosition.offset
-                        positionInHand++
+            let cardsInHand = 0
+            const addCardToHand = card => {
+                const posInHand = cardsInHand++
+                const c = new FullCard(deck.x, deck.y, card.color, card.value, card.type, card.string, card.id, posInHand)
+                animateCardWithMovement(c, {
+                    x: handPosition.x + (posInHand * handPosition.offset),
+                    y: handPosition.y
+                }, () => {
+                    c.setX(handPosition.x + (posInHand * handPosition.offset))
+                    c.setY(handPosition.y)
+                    hand.push(c)
+                    console.log(c)
+                    hand = hand.sort((a, b) => a.positionInHand - b.positionInHand)
+
+                })
+            }
+            const removeCardFromHand = card => {
+                hand = hand.filter(c => c.id !== card.id)
+                cardsInHand--
+                for (const c of hand) {
+                    if (c.positionInHand > card.positionInHand) {
+                        c.positionInHand--
+                        c.setX(handPosition.x + (c.positionInHand * handPosition.offset))
                     }
                 }
-                if (response.type === "VALIDATE_PLAY") {
-                    console.log(response.valid)
-                    if (response.valid == true) {
-                        playCard()
+                hand = hand.sort((a, b) => a.positionInHand - b.positionInHand)
+            }
+            const serverResponseHandler = (response) => {
+                switch (response.type) {
+                    case "STATE" : {
+
                     }
-                    else {
-                        for(const card of hand) {
-                            card.played = false
+                    case "DRAW": {
+                        if (response.publicResponse) return
+                        for (const c of response.cards) {
+                            addCardToHand(c)
                         }
-                        stateLocked = false
+                        break;
                     }
+                    case "VALIDATE_PLAY": {
+                        console.log(response.valid)
+                        if (response.valid === true) {
+                            playCard()
+                        } else {
+                            for (const card of hand) {
+                                card.played = false
+                                animateCardWithMovement(card, {x: card.originalPosX, y: card.originalPosY}, () => {
+                                })
+                            }
+                            stateLocked = false
+                        }
+                        break;
+                    }
+                    case "MOVE" : {
+                        if (+response.playerId !== +playerId) {
+                            const c = response.card
+                            const card = new FullCard(100, 100, c.color, c.value, c.type, c.string, c.id, 0)
+                            animateCardWithMovement(card, {x: playedCardPosition.x, y: playedCardPosition.y}, () => {
+                                playedCard = card
+                                playedCard.setDead(true)
+                            })
+                        }
+                        break;
+                    }
+                    default :
+                        console.log("Response type unknown", response)
                 }
             }
 
-            const posEq = (a,b) => {
+            const posEq = (a, b) => {
                 return a.x === b.x && a.y === b.y
             }
 
             const getSpeed = (from, to) => {
-                return Math.max(1, Math.abs(from-to) / 10)
+                return Math.max(1, Math.abs(from - to) / 10)
             }
 
             const animateCard = (card, destination) => {
-                drawCard(card)
-                if(stateLocked) return
-                if(!posEq(card, destination) && !card.followMouse) {
-                    if(card.x >= destination.x - 3 && card.x <= destination.x + 3)
+                renderCard(card)
+                if (stateLocked) return
+                if (!posEq(card, destination) && !card.followMouse && !card.dead) {
+                    if (card.x >= destination.x - 3 && card.x <= destination.x + 3)
                         card.x = destination.x
-                    if(card.y >= destination.y - 3 && card.y <= destination.y + 3)
+                    if (card.y >= destination.y - 3 && card.y <= destination.y + 3)
                         card.y = destination.y
-                    if(card.x < destination.x)
+                    if (card.x < destination.x)
                         card.x += getSpeed(card.x, destination.x)
-                    else if(card.x > destination.x)
+                    else if (card.x > destination.x)
                         card.x -= getSpeed(card.x, destination.x)
-                    if(card.y < destination.y)
+                    if (card.y < destination.y)
                         card.y += getSpeed(card.y, destination.y)
-                    else if(card.y > destination.y)
+                    else if (card.y > destination.y)
                         card.y -= getSpeed(card.y, destination.y)
                 }
             }
 
-        const animateCardWithMovement = (card, destination) => {
-            drawCard(card)
-            if(stateLocked) return
-            if(!posEq(card, destination) && !card.followMouse) {
-                if(card.x >= destination.x - 3 && card.x <= destination.x + 3)
-                    card.x = destination.x
-                if(card.y >= destination.y - 3 && card.y <= destination.y + 3)
-                    card.y = destination.y
-                if(card.x < destination.x)
-                    card.x += getSpeed(card.x, destination.x)
-                else if(card.x > destination.x)
-                    card.x -= getSpeed(card.x, destination.x)
-                if(card.y < destination.y)
-                    card.y += getSpeed(card.y, destination.y)
-                else if(card.y > destination.y)
-                    card.y -= getSpeed(card.y, destination.y)
-                window.requestAnimationFrame(() => animateCardWithMovement(card, destination))
-            }
+            const animateCardWithMovement = (card, destination, callback) => {
+                renderCard(card)
+                if (stateLocked) return
+                if (!posEq(card, destination) && !card.followMouse) {
+                    if (card.x >= destination.x - 3 && card.x <= destination.x + 3)
+                        card.x = destination.x
+                    if (card.y >= destination.y - 3 && card.y <= destination.y + 3)
+                        card.y = destination.y
+                    if (card.x < destination.x)
+                        card.x += getSpeed(card.x, destination.x)
+                    else if (card.x > destination.x)
+                        card.x -= getSpeed(card.x, destination.x)
+                    if (card.y < destination.y)
+                        card.y += getSpeed(card.y, destination.y)
+                    else if (card.y > destination.y)
+                        card.y -= getSpeed(card.y, destination.y)
+                    window.requestAnimationFrame(() => animateCardWithMovement(card, destination, callback))
+                } else {
+                    callback()
+                }
 
-        }
+            }
 
             const playCard = () => {
                 for (const card of hand) {
                     if (card.played) {
+                        console.log("card played")
                         stateLocked = false
-                        hand = hand.filter(a => a.id !== card.id)
-                        animateCardWithMovement(card, playedCardPosition)
-
+                        playedCard = card.toPlayedCard()
+                        removeCardFromHand(card)
                         break
                     }
                 }
@@ -160,7 +251,7 @@ const GameCanvas = (props) => {
 
             props.serverResponseCallback.current = serverResponseHandler
 
-            const drawBackground = () => {
+            const renderBackground = () => {
                 ctx.fillStyle = '#c5d7f9'
                 ctx.fillRect(50, 50, 1400, 1000)
             }
@@ -175,33 +266,83 @@ const GameCanvas = (props) => {
                 ctx.fill();
             }
 
-            const drawHand = () => {
+            const renderHand = () => {
                 for (const card of hand) {
                     if (card.hover && !card.followMouse) {
-                        animateCard(card, {x: card.x, y: card.handY - 10})
+                        animateCard(card, {x: card.x, y: card.originalPosY - 10})
                     } else {
-                        animateCard(card, {x: card.handX, y: card.handY})
+                        animateCard(card, {x: card.originalPosX, y: card.originalPosY})
                     }
                 }
             }
 
-            const drawCard = (card) => {
-                ctx.fillStyle = card.played ? "brown" : card.hover ? "pink" : card.color
-                roundedRect(ctx, card.x, card.y, card.width, card.height, card.radius)
-                ctx.font = "30px Comic Sans MS";
-                ctx.fillStyle = card.color === "black" ? "white" : "black";
-                ctx.textAlign = "center";
-                ctx.fillText(card.value, card.x + card.width / 2, card.y + card.height / 2);
-
+            const renderDeck = () => {
+                renderCard(deck)
             }
 
-            const drawPlayedCard = () => {
-                if (props.move !== undefined && props.move.type === "MOVE") {
-                    const c = props.move.card
-                    playedCard = new Card(playedCardPosition.x, playedCardPosition.y, c.color, c.value, c.type, c.string, c.id, 0)
-                    props.callBack()
+            const renderCard = (card) => {
+                ctx.fillStyle = card.hover && !card.dead ? "pink" : card.color
+                roundedRect(ctx, card.x, card.y, card.width, card.height, card.radius)
+                ctx.font = "30px Comic Sans MS";
+                ctx.fillStyle = card.color === "BLACK" ? "white" : "black";
+                ctx.textAlign = "center";
+                ctx.fillText(card.value, card.x + card.width / 2, card.y + card.height / 2);
+            }
+
+            const renderPlayedCard = () => {
+                if (playedCard === null) return
+                renderCard(playedCard)
+            }
+
+            class Button {
+                hover = false
+                width = 150
+                height = 100
+                radius = 5
+
+                constructor(x, y, color, text) {
+                    this.x = x
+                    this.y = y
+                    this.color = color
+                    this.text = text
                 }
-                drawCard(playedCard)
+
+                setHover = val => {
+                    this.hover = val
+                }
+            }
+
+            const colorPickerObj = {
+                x: 550,
+                y: 200,
+                width: 400,
+                height: 300,
+                radius: 10
+            }
+
+            const buttons = []
+            buttons.push(new Button(colorPickerObj.x + 50, colorPickerObj.y + 80, "YELLOW", "Yellow"))
+            buttons.push(new Button(colorPickerObj.x + 200, colorPickerObj.y + 80, "RED", "Red"))
+            buttons.push(new Button(colorPickerObj.x + 50, colorPickerObj.y + 180, "BLUE", "Blue"))
+            buttons.push(new Button(colorPickerObj.x + 200, colorPickerObj.y + 180, "GREEN", "Green"))
+
+            const renderColorPicker = () => {
+                if (!colorPicker) return
+                ctx.fillStyle = "white"
+                roundedRect(ctx, 550, 200, 400, 300, 10)
+                ctx.font = "30px Comic Sans MS";
+                ctx.fillStyle = "black"
+                ctx.textAlign = "center";
+                ctx.fillText("Pick a color", 720, 250);
+
+                for (const button of buttons) {
+                    ctx.fillStyle = button.hover ? "pink" : button.color
+                    roundedRect(ctx, button.x, button.y, button.width, button.height, button.radius)
+                    ctx.font = "30px Comic Sans MS";
+                    ctx.fillStyle = "black"
+                    ctx.textAlign = "center";
+                    ctx.fillText(button.text, button.x + 70, button.y + 60);
+                }
 
             }
 
@@ -216,16 +357,40 @@ const GameCanvas = (props) => {
             }
 
             const draw = (framecount) => {
-                drawBackground()
-                drawPlayedCard()
-                drawHand()
+                renderBackground()
+                renderPlayedCard()
+                renderHand()
+                renderDeck()
+                renderColorPicker()
             }
 
-            const define = (card) => {
-                roundedRect(ctx, card.x, card.y, card.width, card.height, card.radius)
+            const define = (element) => {
+                roundedRect(ctx, element.x, element.y, element.width, element.height, element.radius)
+            }
+
+            const didClick = (element, event) => {
+                define(element)
+                const mouseX = parseInt(event.clientX);
+                const mouseY = parseInt(event.clientY);
+                return ctx.isPointInPath(mouseX, mouseY)
             }
 
             const mouseDownHandler = event => {
+                if (colorPicker) {
+                    for (const button of buttons) {
+                        if (didClick(button, event)) {
+                            props.onSendGameState({
+                                playerId: playerId,
+                                card: wildCard,
+                                chosenColor: button.color,
+                                sessionId: sessionId
+                            })
+                            wildCard = null
+                            colorPicker = false
+                            break
+                        }
+                    }
+                }
                 if (stateLocked) return
                 for (const card of hand) {
                     if (card.hover) {
@@ -233,6 +398,14 @@ const GameCanvas = (props) => {
                         break
                     }
                 }
+                if (didClick(deck, event)) {
+                    props.onSendGameState({playerId: playerId, action: "DRAW", sessionId: sessionId})
+                }
+            }
+
+            const showAndGetColor = card => {
+                wildCard = card
+                colorPicker = true
             }
 
             const mouseUpHandler = event => {
@@ -241,12 +414,23 @@ const GameCanvas = (props) => {
                     if (card.followMouse) {
                         card.followMouse = false
                         if (card.y < 400) {
-                            stateLocked = true
-                            card.played = true
-                            props.onSendGameState({
-                                card: card,
-                                playerId: playerId,
-                                sessionId: localStorage.getItem("sessionId")
+                            card.dead = true
+                            if (card.type === "WILD" || card.type === "DRAW4") {
+                                animateCardWithMovement(card, playedCardPosition, () => {
+                                    card.played = true
+                                    console.log("played")
+                                    showAndGetColor(card)
+                                })
+                                return;
+                            }
+                            animateCardWithMovement(card, playedCardPosition, () => {
+                                card.played = true
+                                console.log("played")
+                                props.onSendGameState({
+                                    card: card, 
+                                    playerId: playerId,
+                                    sessionId: sessionId
+                                })
                             })
                         }
                     }
@@ -254,9 +438,17 @@ const GameCanvas = (props) => {
             }
 
             const mouseMoveHandler = event => {
-                if (stateLocked) return
                 const mouseX = parseInt(event.clientX);
                 const mouseY = parseInt(event.clientY);
+                for (const button of buttons) {
+                    define(button)
+                    if (ctx.isPointInPath(mouseX, mouseY)) {
+                        button.setHover(true)
+                        continue
+                    }
+                    button.setHover(false)
+                }
+                if (stateLocked) return
                 for (const card of hand) {
                     if (card.followMouse) {
                         card.x = mouseX - card.width / 2
@@ -277,6 +469,7 @@ const GameCanvas = (props) => {
                 }
                 if (chosen !== undefined)
                     chosen.setHover(true)
+
             }
             window.addEventListener('mousedown', mouseDownHandler)
             window.addEventListener('mouseup', mouseUpHandler)
@@ -298,7 +491,7 @@ const GameCanvas = (props) => {
                 window.removeEventListener('mousemove', mouseMoveHandler)
                 window.cancelAnimationFrame(animationFrameId)
             }
-        }, [playerId, props, props.move]
+        }, [playerId]
     )
 
     return <canvas ref={canvasRef} {...props} width={1400} height={800}/>
